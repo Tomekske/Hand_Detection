@@ -21,6 +21,14 @@ int S_MAX = 0;
 int V_MIN = 0;
 int V_MAX = 0;
 
+
+int HMIN = 0;
+int HMAX = 0;
+int SMIN = 0;
+int SMAX = 0;
+int VMIN = 0;
+int VMAX = 0;
+
 //default capture width and height
 #define FRAME_WIDTH  640
 #define FRAME_HEIGHT  480
@@ -42,16 +50,31 @@ const int MAX_OBJECT_AREA = FRAME_HEIGHT*FRAME_WIDTH / 1.5;
 const string windowBGR = "Original Image";
 const string windowHSV = "HSV Image";
 const string windowThreshold = "Thresholded Image";
-const string windowName3 = "After Morphological Operations";
+const string windowThreshold2 = "Thresholded2 Image";
 const string windowTrackbars = "Trackbars";
-const string windowBlur = "Blur Thresholded Image";
+const string windowBlur = "Blured Thresholded Image";
+const string windowBlur2 = "Blured2 Thresholded Image";
 
-char strArr[16][16];
+#define STORE_ARR_SIZE 32
+char strArr[STORE_ARR_SIZE][STORE_ARR_SIZE];
 
 
 //-------
 
- 
+void LeftClick()
+{
+	INPUT    Input = { 0 };
+	// left down 
+	Input.type = INPUT_MOUSE;
+	Input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
+	::SendInput(1, &Input, sizeof(INPUT));
+
+	// left up
+	::ZeroMemory(&Input, sizeof(INPUT));
+	Input.type = INPUT_MOUSE;
+	Input.mi.dwFlags = MOUSEEVENTF_LEFTUP;
+	::SendInput(1, &Input, sizeof(INPUT));
+}
 //-------
 void on_trackbar(int, void*)
 {
@@ -71,7 +94,7 @@ void morphologicalOperations(Mat &threshold) {
 
 	dilate(threshold, threshold, dilateElement);
 	dilate(threshold, threshold, dilateElement);
-
+	
 
 
 }
@@ -86,18 +109,28 @@ void createTrackbars()
 	sprintf(TrackbarName, "S_MAX", S_MAX);
 	sprintf(TrackbarName, "V_MIN", V_MIN);
 	sprintf(TrackbarName, "V_MAX", V_MAX);
+
+	sprintf(TrackbarName, "HMIN", H_MIN);
+	sprintf(TrackbarName, "HMAX", H_MAX);
+	sprintf(TrackbarName, "SMIN", S_MIN);
+	sprintf(TrackbarName, "SMAX", S_MAX);
+	sprintf(TrackbarName, "VMIN", V_MIN);
+	sprintf(TrackbarName, "VMAX", V_MAX);
+
 	//create trackbars and insert them into window
-	//3 parameters are: the address of the variable that is changing when the trackbar is moved(eg.H_LOW),
-	//the max value the trackbar can move (eg. H_HIGH), 
-	//and the function that is called whenever the trackbar is moved(eg. on_trackbar)
-	//                                  ---->    ---->     ---->      
 	createTrackbar("H_MIN", windowTrackbars, &H_MIN, TRACKBAR_MAX_VALUE, on_trackbar);
 	createTrackbar("H_MAX", windowTrackbars, &H_MAX, TRACKBAR_MAX_VALUE, on_trackbar);
 	createTrackbar("S_MIN", windowTrackbars, &S_MIN, TRACKBAR_MAX_VALUE, on_trackbar);
 	createTrackbar("S_MAX", windowTrackbars, &S_MAX, TRACKBAR_MAX_VALUE, on_trackbar);
 	createTrackbar("V_MIN", windowTrackbars, &V_MIN, TRACKBAR_MAX_VALUE, on_trackbar);
 	createTrackbar("V_MAX", windowTrackbars, &V_MAX, TRACKBAR_MAX_VALUE, on_trackbar);
-	
+
+	createTrackbar("HMIN", windowTrackbars, &HMIN, TRACKBAR_MAX_VALUE, on_trackbar);
+	createTrackbar("HMAX", windowTrackbars, &HMAX, TRACKBAR_MAX_VALUE, on_trackbar);
+	createTrackbar("SMIN", windowTrackbars, &SMIN, TRACKBAR_MAX_VALUE, on_trackbar);
+	createTrackbar("SMAX", windowTrackbars, &SMAX, TRACKBAR_MAX_VALUE, on_trackbar);
+	createTrackbar("VMIN", windowTrackbars, &VMIN, TRACKBAR_MAX_VALUE, on_trackbar);
+	createTrackbar("VMAX", windowTrackbars, &VMAX, TRACKBAR_MAX_VALUE, on_trackbar);
 
 }
 string intToString(int number) {
@@ -117,30 +150,45 @@ void splitString(char token[], char filter[])
 		strcpy(strArr[c], str); //copy splitted word in array of strings
 		str = strtok(NULL, filter); //in order to get next token and to continue with the same string NULL is passed as first argument since strtok maintains a static pointer to your previous passed string
 		c++;
+		//cout << c << endl;
 	}
 }
 
-void writeFile()
+void writeFile(int object,char *filename)
 {
 	ofstream writefile;
-	writefile.open(file);
-	writefile << "H_MIN: " << H_MIN << endl;
-	writefile << "H_MAX: " << H_MAX << endl;
-	writefile << "S_MIN: " << S_MIN << endl;
-	writefile << "S_MAX: " << S_MAX << endl;
-	writefile << "V_MIN: " << V_MIN << endl;
-	writefile << "V_MAX: " << V_MAX << endl;
+	writefile.open(filename);
+	if (object == 1)
+	{
+		writefile << "H_MIN: " << H_MIN << endl;
+		writefile << "H_MAX: " << H_MAX << endl;
+		writefile << "S_MIN: " << S_MIN << endl;
+		writefile << "S_MAX: " << S_MAX << endl;
+		writefile << "V_MIN: " << V_MIN << endl;
+		writefile << "V_MAX: " << V_MAX << endl;
+	}
+
+	else if (object == 2)
+	{
+		writefile << "H_MIN: " << HMIN << endl;
+		writefile << "H_MAX: " << HMAX << endl;
+		writefile << "S_MIN: " << SMIN << endl;
+		writefile << "S_MAX: " << SMAX << endl;
+		writefile << "V_MIN: " << VMIN << endl;
+		writefile << "V_MAX: " << VMAX << endl;
+	}
+
 	writefile.close();
 	cout << "File Saved!" << endl;
 }
 
-void readFile()
+void readFile(int object,string filename)
 {
-	ifstream readFile(file);
+	ifstream readFile(filename);
 	string line;
 	char filter[3] = ": ";
 	int counter = 0;
-	char settings[16][16];
+	char settings[STORE_ARR_SIZE][STORE_ARR_SIZE];
 
 	if (readFile.is_open())
 	{
@@ -148,61 +196,91 @@ void readFile()
 
 		while (getline(readFile, line))
 		{
-			cout << line << '\n';
 			strcpy(settings[counter], line.c_str());
 			splitString(settings[counter], filter);
 			counter++;
 		}
-		readFile.close();
+		if (object == 1)
+		{
+
+		
 		H_MIN = atoi(strArr[1]);
 		H_MAX = stoi(strArr[3]);
 		S_MIN = stoi(strArr[5]);
 		S_MAX = stoi(strArr[7]);
 		V_MIN = stoi(strArr[9]);
 		V_MAX = stoi(strArr[11]);
+
+		}
+		else if (object == 2)
+		{
+			HMIN = atoi(strArr[13]);
+			HMAX = stoi(strArr[15]);
+			SMIN = stoi(strArr[17]);
+			SMAX = stoi(strArr[19]);
+			VMIN = stoi(strArr[21]);
+			VMAX = stoi(strArr[23]);
+		}	
 	}
 	
 	else
 	{
-		cout << "File could not be openned!";
+		cout << "File could not be openned!" << endl;
 		H_MIN = 0;
 		H_MAX = 256;
 		S_MIN = 0;
 		S_MAX = 256;
 		V_MIN = 0;
 		V_MAX = 256;
+
+		HMIN = 0;
+		HMAX = 256;
+		SMIN = 0;
+		SMAX = 256;
+		VMIN = 0;
+		VMAX = 256;
 	}
+
+	readFile.close();
 }
 
 void drawObject(int x, int y, Mat &frame) 
 {
-
-	//use some of the openCV drawing functions to draw crosshairs
-	//on your tracked image!
-
-	//UPDATE:JUNE 18TH, 2013
-	//added 'if' and 'else' statements to prevent
-	//memory errors from writing off the screen (ie. (-25,-25) is not within the window!)
-
-	circle(frame, Point(x, y), 20, Scalar(0, 255, 0), 2);
-	if (y - 25>0)
+	circle(frame, Point(x, y), 20, Scalar(0, 255, 0), 2); //draw circle on frame, @20 = radius ciricle
+	
+	//making sure center cross is drawn correct in every possition
+	
+	//show upper line 
+	if (y - 20>0)
 		line(frame, Point(x, y), Point(x, y - 25), Scalar(0, 255, 0), 2);
-	else line(frame, Point(x, y), Point(x, 0), Scalar(0, 255, 0), 2);
+	else 
+		line(frame, Point(x, y), Point(x, 0), Scalar(0, 255, 0), 2);
+
+	//show under line	
 	if (y + 25<FRAME_HEIGHT)
 		line(frame, Point(x, y), Point(x, y + 25), Scalar(0, 255, 0), 2);
-	else line(frame, Point(x, y), Point(x, FRAME_HEIGHT), Scalar(0, 255, 0), 2);
+	else 
+		line(frame, Point(x, y), Point(x, FRAME_HEIGHT), Scalar(0, 255, 0), 2);
+	
+	//show left line
 	if (x - 25>0)
 		line(frame, Point(x, y), Point(x - 25, y), Scalar(0, 255, 0), 2);
-	else line(frame, Point(x, y), Point(0, y), Scalar(0, 255, 0), 2);
+	else 
+		line(frame, Point(x, y), Point(0, y), Scalar(0, 255, 0), 2);
+	
+	//show right line
 	if (x + 25<FRAME_WIDTH)
 		line(frame, Point(x, y), Point(x + 25, y), Scalar(0, 255, 0), 2);
-	else line(frame, Point(x, y), Point(FRAME_WIDTH, y), Scalar(0, 255, 0), 2);
+	else 
+		line(frame, Point(x, y), Point(FRAME_WIDTH, y), Scalar(0, 255, 0), 2);
+	
 
-	putText(frame, intToString(x) + "," + intToString(y), Point(x, y + 30), 1, 1, Scalar(0, 255, 0), 2);
+
+	putText(frame, intToString(x) + "," + intToString(y), Point(x, y + 30), 1, 1, Scalar(255, 0, 0), 2); //show coordinates!
 
 }
-void trackFilteredObject(int &x, int &y, Mat threshold, Mat &cameraFeed) {
-
+bool trackFilteredObject(int &x, int &y, Mat threshold, Mat &cameraFeed)
+{
 	Mat temp;
 	threshold.copyTo(temp);
 	//these two vectors needed for output of findContours
@@ -236,23 +314,30 @@ void trackFilteredObject(int &x, int &y, Mat threshold, Mat &cameraFeed) {
 					objectFound = true;
 					refArea = area;
 				}
-				else 
+				else
+				{
 					objectFound = false;
-
-
+				}
 			}
 			//let user know you found an object
 			if (objectFound == true) 
 			{
-				putText(cameraFeed, "Tracking Object", Point(0, 50), 2, 1, Scalar(0, 255, 0), 2);
-				//draw object location on screen
-				drawObject(x, y, cameraFeed);
+				drawObject(x, y, cameraFeed);	//draw object location on screen
+				return true;
 			}
-
+			else
+			{
+				return false;
+			}
 		}
-		else 
-			putText(cameraFeed, "TOO MUCH NOISE! ADJUST FILTER", Point(0, 50), 1, 2, Scalar(0, 0, 255), 2);
+		else
+		{
+			putText(cameraFeed, "TOO MUCH NOISE!", Point(0, 50), 1, 2, Scalar(0, 0, 255), 2);
+			return false;
+		}
+		return false;
 	}
+	return false;
 }
 
 void instructions()
@@ -267,12 +352,31 @@ void instructions()
 
 }
 
-void rec(Mat &frame, VideoWriter vidWriter)
+void recordFrame(Mat &frame, VideoWriter vidWriter,bool recording)
 {
-	//	putText(frame, "REC", Point(0, 60), 2, 2, Scalar(0, 0, 255));
-	vidWriter.write(frame);
-	putText(frame, "REC", Point(FRAME_WIDTH - 80, 40), 2, 1, Scalar(0, 0, 255), 2);
-	cout << "REC!" << endl;
+	static bool flag = false;
+	if (recording == true)
+	{
+		vidWriter.write(frame);
+		putText(frame, "REC", Point(FRAME_WIDTH - 80, 40), 2, 1, Scalar(0, 0, 255), 2);
+
+		if (flag == true)
+		{
+
+			cout << "recording!" << endl;
+			flag = !flag;
+		}
+	}
+
+	else
+	{
+		if (flag == false)
+		{
+
+			cout << "not recording!" << endl;
+			flag = !flag;
+		}
+	}
 }
 
 void cursor(int x, int y, bool activateCursor)
@@ -289,6 +393,7 @@ void cursor(int x, int y, bool activateCursor)
 			flag = !flag;
 		}
 	}
+
 	else
 	{
 		if (flag == false)
@@ -297,38 +402,45 @@ void cursor(int x, int y, bool activateCursor)
 			cout << "Cursor disabled!" << endl;
 			flag = !flag;
 		}
-	
 	}
 }
 int main(int argc, char* argv[])
 {
-	
+	bool useBlur = false;
+	bool useMorph = true;
+	bool trackObj = true;
+	bool activateCursor = false;
+
+	bool tr = false;
+	bool tr2 = false;
+	bool recording = false;
+
 	char *word, *arr[3], conv[32][32];
 	int c = 0;
 	
 	char *vidLoc = "Test.avi"; 
 	int fcc = CV_FOURCC('D', 'I', 'V', '3');
-	int fps = 15;
-	
+	int fps = 10;
+
 	Mat frame; //Matrix to store each frame of the webcam feed
-	Mat hsv;
-	Mat threshold;
+	Mat hsv; //Matrix to store each hsv frame of the first object of the webcam feed
+	Mat hsv2; //Matrix to store each hsv frame of the second object of the webcam feed
+	Mat threshold; //Matrix to store each binairy frame of the first object of the webcam feed
+	Mat threshold2; //Matrix to store each binairy frame of the second object of the webcam feed
 	Mat blur;
+	Mat blur2;
 	VideoCapture capture; //video capture object to acquire webcam feed
 	VideoWriter vidWriter;
 	Size frameSize(FRAME_WIDTH, FRAME_HEIGHT);
 	vidWriter = VideoWriter(vidLoc, fcc, fps, frameSize);
 	instructions();
-	readFile();
+	readFile(1, "threshold1.txt"); 
+	readFile(2, "threshold2.txt");
 	int x = 0, y = 0;
-	
-	bool useMorph = true;
-	bool useBlur = true;
-	bool trackObj = true;
-	bool activateCursor = false;
+	int x2 = 0, y2 = 0;
 
 
-	bool recording = false;
+
 
 	capture.open(0); //select default webcam
 	createTrackbars(); //create trackbarsq
@@ -341,66 +453,101 @@ int main(int argc, char* argv[])
 	
 	while (1)
 	{
-		bool isRec = false;
 		capture.read(frame); //store image to matrix
 		flip(frame, frame, 1); //mirror image, 1 = horizontal flip
 
-
 		cvtColor(frame, hsv, COLOR_BGR2HSV); //convert BGR to HSV
-		inRange(hsv, Scalar(H_MIN, S_MIN, V_MIN), Scalar(H_MAX, S_MAX, V_MAX), threshold); //convert to binary image
-		
+		cvtColor(frame, hsv2, COLOR_BGR2HSV); //convert BGR to HSV
 
+		inRange(hsv, Scalar(H_MIN, S_MIN, V_MIN), Scalar(H_MAX, S_MAX, V_MAX), threshold); //convert to binary 
+		inRange(hsv2, Scalar(HMIN, SMIN, VMIN), Scalar(HMAX, SMAX, VMAX), threshold2); //convert to binary image
+		
 		if (useBlur)
 		{
-			medianBlur(threshold, blur, 15);
 			if (useMorph)
-				morphologicalOperations(blur);
+			{
+				morphologicalOperations(threshold);
+				morphologicalOperations(threshold2);
+			}
+
+			medianBlur(threshold, blur, 15);
+			medianBlur(threshold2, blur2, 15);
 
 			if (trackObj)
-				trackFilteredObject(x, y, blur, frame);
+			{
+				tr = trackFilteredObject(x, y, blur, frame);
+				tr2 = trackFilteredObject(x2, y2, blur2, frame);
+			}
+
 			if (recording == true)
-				rec(frame, vidWriter);
+				recordFrame(frame, vidWriter, recording);
+			else
+				recordFrame(frame, vidWriter, recording);
 			
 			moveWindow(windowBGR, POS_X, POS_Y); //position BGR windows
 			imshow(windowBGR, frame); //show image in window
 
 			moveWindow(windowBlur, POS_X, POS_Y + FRAME_HEIGHT + 33); //position threshold windows
 			imshow(windowBlur, blur); //show image in window
+			
+			moveWindow(windowBlur2, POS_X * 2 + 60, POS_Y + FRAME_HEIGHT + 33); //position threshold  windows
+			imshow(windowBlur2, blur2); //show image in window
+
+			if (activateCursor == true)
+				cursor(x, y, activateCursor);
+			else
+				cursor(x, y, activateCursor);
+
+			if (tr == true && tr2 == true && activateCursor == true)
+				LeftClick();
 		}
 
 		else
 		{
-
 			if (useMorph)
+			{
 				morphologicalOperations(threshold);
+				morphologicalOperations(threshold2);
+			}
 			if (trackObj)
-				trackFilteredObject(x, y, threshold, frame);
+			{
+				tr = trackFilteredObject(x, y, threshold, frame);
+				tr2 = trackFilteredObject(x2, y2, threshold2, frame);
+			}
+
 			if (recording == true)
-				rec(frame, vidWriter);
-			
+				recordFrame(frame, vidWriter, recording);
+			else
+				recordFrame(frame, vidWriter, recording);
+
 			moveWindow(windowBGR, POS_X, POS_Y); //position BGR windows
 			imshow(windowBGR, frame); //show image in window
 
-			moveWindow(windowThreshold, POS_X, POS_Y + FRAME_HEIGHT + 33); //position threshold  windows
+			moveWindow(windowThreshold, POS_X, POS_Y + FRAME_HEIGHT + 33); //position threshold windows
 			imshow(windowThreshold, threshold); //show image in window
-	
+
+			moveWindow(windowThreshold2, POS_X * 2 + 60, POS_Y + FRAME_HEIGHT + 33); //position threshold  windows
+			imshow(windowThreshold2, threshold2); //show image in window
+
+			if (activateCursor == true)
+				cursor(x,y,activateCursor);
+			else
+				cursor(x, y, activateCursor);
+
+			if (tr == true && tr2 == true && activateCursor == true)
+				LeftClick();
 		}
-		if (activateCursor == true)
-			cursor(x, y, activateCursor);
-		else
-			cursor(x, y, activateCursor);
+
 		switch (char(waitKey(1)))
 		{
-		case 's': writeFile(); break; //if you hit 's' settings will be saved 
-		case 'r': recording = !recording; break;
-		case 'c': activateCursor = !activateCursor; break;
-		case 27: cout << "Program closed!"; return 0;
+			case 's': writeFile(1,"threshold1.txt"); writeFile(2, "threshold2.txt"); break; //if you hit 's' settings will be saved 
+			case 'r': recording = !recording; break; //if you hit 'r' you'll start recording  
+			case 'c': activateCursor = !activateCursor; break; //if you hit 'c' you'll activate cursor
+			case  27: cout << "Program closed!"; return 0; //if you hit 'esc' you'll exit the program
 		}
 
-		waitKey(30); //wait 1ms
+		waitKey(10); //wait 1ms
 
 	}
-	
-
 	return 0;
 }

@@ -63,9 +63,6 @@ const string windowBlur2 = "Blured2 Thresholded Image";
 #define STORE_ARR_SIZE 32
 char strArr[STORE_ARR_SIZE][STORE_ARR_SIZE];
 
-
-//-------
-
 void LeftClick()
 {
 	INPUT    Input = { 0 };
@@ -80,7 +77,7 @@ void LeftClick()
 	Input.mi.dwFlags = MOUSEEVENTF_LEFTUP;
 	::SendInput(1, &Input, sizeof(INPUT));
 }
-//-------
+
 void on_trackbar(int, void*)
 {
  //This function gets called whenever a trackbar position is changed
@@ -347,13 +344,14 @@ bool trackFilteredObject(int &x, int &y, Mat threshold, Mat &cameraFeed)
 
 void instructions()
 {
-	cout << "#======================#" << endl;
-	cout << "# Instructions:        #" << endl;
-	cout << "# Enable cursor      c #" << endl;
-	cout << "# Record stream      r #" << endl;
-	cout << "# Save settings      s #" << endl; 
-	cout << "# Exit program     ESC #" << endl;
-	cout << "#======================#" << endl << endl << endl;
+	cout << "#=================================#" << endl;
+	cout << "# Instructions:                   #" << endl;
+	cout << "# Enable cursor                 t #" << endl; 
+	cout << "# Cursor Stabilisator           c #" << endl;
+	cout << "# Record stream                 r #" << endl;
+	cout << "# Save settings                 s #" << endl; 
+	cout << "# Exit program                ESC #" << endl;
+	cout << "#=================================#" << endl << endl << endl;
 
 }
 
@@ -367,7 +365,6 @@ void recordFrame(Mat &frame, VideoWriter vidWriter,bool recording)
 
 		if (flag == true)
 		{
-
 			cout << "recording!" << endl;
 			flag = !flag;
 		}
@@ -383,8 +380,6 @@ void recordFrame(Mat &frame, VideoWriter vidWriter,bool recording)
 		}
 	}
 }
-
-
 
 int summation(int value)
 {
@@ -405,22 +400,42 @@ int weightedMean(vector<int>&vec)
 	return wMean /= sum;
 }
 
-int cursorStabilisator(vector<int>&vec, int amountSamples, int data)
+int cursorStabilisator(vector<int>&vec, int amountSamples, int data,bool activateStabilisator)
 {
 	int vectorSize = vec.size();
+	static int cFlag = false;
 	static int flag = false;
+	if (activateStabilisator == true)
+	{
+		if (flag == true)
+		{
 
+			cout << "Stabilisator enabled!" << endl;
+			flag = !flag;
+		}
+	}
+
+	else
+	{
+		if (flag == false)
+		{
+
+			cout << "Stabilisator disabled!" << endl;
+			flag = !flag;
+		}
+
+	}
 	if (vectorSize > amountSamples)
 	{
 		vec.erase(vec.begin());
-		flag = true;
+		cFlag = true;
 		return weightedMean(vec);
 		
 	}
 	else
 	{
 		vec.push_back(data);
-		if (flag == false)
+		if (cFlag == false)
 			return data;
 	}
 }
@@ -449,23 +464,21 @@ void cursor(int x, int y, bool activateCursor)
 		}
 	}
 }
+
 int main(int argc, char* argv[])
 {
 	vector<int> vecX; 
 	vector<int> vecY;
 
-
-
 	int g = 0;
 	int gem = 0;
 	int wMean = 0;
-
-
 
 	bool useBlur = true;
 	bool useMorph = true;
 	bool trackObj = true;
 	bool activateCursor = false;
+	bool activateStabilisator = false;
 
 	bool tr = false;
 	bool tr2 = false;
@@ -495,8 +508,6 @@ int main(int argc, char* argv[])
 	int x = 0, y = 0;
 	int x2 = 0, y2 = 0;
 	int nX = 0, nY = 0;
-
-
 
 	capture.open(0); //select default webcam
 	createTrackbars(); //create trackbarsq
@@ -549,19 +560,27 @@ int main(int argc, char* argv[])
 			moveWindow(windowBlur2, POS_X * 2 + 60, POS_Y + FRAME_HEIGHT + 33); //position threshold  windows
 			imshow(windowBlur2, blur2); //show image in window
 			
-			nX = cursorStabilisator(vecX, 20, x);
-			nY = cursorStabilisator(vecY, 20, y);
+			nX = cursorStabilisator(vecX, 10, x2, activateStabilisator);
+			nY = cursorStabilisator(vecY, 10, y2, activateStabilisator);
 
-			if (activateCursor == true)
-				cursor(nX, nY, activateCursor);
+			//cout << x2 << "   " << nX << "   " << y2 << "   " << nY << endl;
+
+			if (activateStabilisator == true)
+			{
+				if (activateCursor == true)
+					cursor(nX, nY, activateCursor);
+				else
+					cursor(nX, nY, activateCursor);
+			}
+
 			else
-				cursor(nX, nY, activateCursor);
-
-			if (activateCursor == true)
-				cursor(x, y, activateCursor);
-			else
-				cursor(x, y, activateCursor);
-
+			{
+				if (activateCursor == true)
+					cursor(x2, y2, activateCursor);
+				else
+					cursor(x2, y2, activateCursor);
+			}
+			
 			if (tr == true && tr2 == true && activateCursor == true)
 				LeftClick();
 		}
@@ -595,8 +614,8 @@ int main(int argc, char* argv[])
 
 			moveWindow(windowThreshold2, POS_X * 2 + 60, POS_Y + FRAME_HEIGHT + 33); //position threshold  windows
 			imshow(windowThreshold2, threshold2); //show image in window
-			nX = cursorStabilisator(vecX, 20, x);
-			nY = cursorStabilisator(vecY, 20, y);
+			nX = cursorStabilisator(vecX, 20, x, activateCursor);
+			nY = cursorStabilisator(vecY, 20, y, activateCursor);
 
 			//cout << x << "   " << nX << "   " << y << "   " << nY << endl;
 			if (activateCursor == true)
@@ -612,15 +631,14 @@ int main(int argc, char* argv[])
 		{
 			case 's': writeFile(1,"threshold1.txt"); writeFile(2, "threshold2.txt"); break; //if you hit 's' settings will be saved 
 			case 'r': recording = !recording; break; //if you hit 'r' you'll start recording  
-			case 'c': activateCursor = !activateCursor; break; //if you hit 'c' you'll activate cursor
+			case 't': activateCursor = !activateCursor; break; //if you hit 'c' you'll activate cursor
+			case 'c': activateStabilisator = !activateStabilisator; break; //if you hit 'c' you'll activate cursor
 			case  27: cout << "Program closed!"; return 0; //if you hit 'esc' you'll exit the program
 		}
 
 		waitKey(10); //wait 1ms
 
 	}
-	
-
 	
 	getchar();
 	return 0;

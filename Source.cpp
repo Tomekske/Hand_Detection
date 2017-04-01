@@ -1,15 +1,20 @@
 
 
-#include<opencv2/core/core.hpp>
-#include<opencv2/highgui/highgui.hpp>
-#include<opencv2/imgproc/imgproc.hpp>
-#include<opencv2/opencv.hpp>
-#include<iostream>
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/opencv.hpp>
+#include <iostream>
 #include <fstream>
-#include<conio.h>           
+#include <conio.h>           
 #include <opencv2/tracking.hpp>
 #include <string>
-#include<windows.h>
+#include <windows.h>
+#include <vector>
+
+#include <time.h>
+#include <stdlib.h>
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 using namespace cv;
 using namespace std;
@@ -67,7 +72,7 @@ void LeftClick()
 	// left down 
 	Input.type = INPUT_MOUSE;
 	Input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
-	::SendInput(1, &Input, sizeof(INPUT));
+	::SendInput(1, &Input, sizeof(INPUT)); //It means global scope. You might need to use this operator when you have conflicting functions or variables in the same scope and you need to use a global one
 
 	// left up
 	::ZeroMemory(&Input, sizeof(INPUT));
@@ -379,6 +384,46 @@ void recordFrame(Mat &frame, VideoWriter vidWriter,bool recording)
 	}
 }
 
+
+
+int summation(int value)
+{
+	int sum = 0;
+
+	for (int i = 1; i <= value; i++)
+		sum += i;
+	return sum;
+}
+
+int weightedMean(vector<int>&vec)
+{
+	int wMean = 0;
+	int sum = summation(vec.size());
+	for (int i = 0; i < vec.size(); i++)
+		wMean += (i + 1)*vec[i];
+
+	return wMean /= sum;
+}
+
+int cursorStabilisator(vector<int>&vec, int amountSamples, int data)
+{
+	int vectorSize = vec.size();
+	static int flag = false;
+
+	if (vectorSize > amountSamples)
+	{
+		vec.erase(vec.begin());
+		flag = true;
+		return weightedMean(vec);
+		
+	}
+	else
+	{
+		vec.push_back(data);
+		if (flag == false)
+			return data;
+	}
+}
 void cursor(int x, int y, bool activateCursor)
 {
 	static bool flag = false;
@@ -406,7 +451,18 @@ void cursor(int x, int y, bool activateCursor)
 }
 int main(int argc, char* argv[])
 {
-	bool useBlur = false;
+	vector<int> vecX; 
+	vector<int> vecY;
+
+
+
+	int g = 0;
+	int gem = 0;
+	int wMean = 0;
+
+
+
+	bool useBlur = true;
 	bool useMorph = true;
 	bool trackObj = true;
 	bool activateCursor = false;
@@ -438,7 +494,7 @@ int main(int argc, char* argv[])
 	readFile(2, "threshold2.txt");
 	int x = 0, y = 0;
 	int x2 = 0, y2 = 0;
-
+	int nX = 0, nY = 0;
 
 
 
@@ -492,6 +548,14 @@ int main(int argc, char* argv[])
 			
 			moveWindow(windowBlur2, POS_X * 2 + 60, POS_Y + FRAME_HEIGHT + 33); //position threshold  windows
 			imshow(windowBlur2, blur2); //show image in window
+			
+			nX = cursorStabilisator(vecX, 20, x);
+			nY = cursorStabilisator(vecY, 20, y);
+
+			if (activateCursor == true)
+				cursor(nX, nY, activateCursor);
+			else
+				cursor(nX, nY, activateCursor);
 
 			if (activateCursor == true)
 				cursor(x, y, activateCursor);
@@ -504,6 +568,7 @@ int main(int argc, char* argv[])
 
 		else
 		{
+			
 			if (useMorph)
 			{
 				morphologicalOperations(threshold);
@@ -523,16 +588,21 @@ int main(int argc, char* argv[])
 			moveWindow(windowBGR, POS_X, POS_Y); //position BGR windows
 			imshow(windowBGR, frame); //show image in window
 
+			imshow(windowHSV, hsv); //show image in window
+
 			moveWindow(windowThreshold, POS_X, POS_Y + FRAME_HEIGHT + 33); //position threshold windows
 			imshow(windowThreshold, threshold); //show image in window
 
 			moveWindow(windowThreshold2, POS_X * 2 + 60, POS_Y + FRAME_HEIGHT + 33); //position threshold  windows
 			imshow(windowThreshold2, threshold2); //show image in window
+			nX = cursorStabilisator(vecX, 20, x);
+			nY = cursorStabilisator(vecY, 20, y);
 
+			//cout << x << "   " << nX << "   " << y << "   " << nY << endl;
 			if (activateCursor == true)
-				cursor(x,y,activateCursor);
+				cursor(nX, nY,activateCursor);
 			else
-				cursor(x, y, activateCursor);
+				cursor(nX, nY, activateCursor);
 
 			if (tr == true && tr2 == true && activateCursor == true)
 				LeftClick();
@@ -549,5 +619,9 @@ int main(int argc, char* argv[])
 		waitKey(10); //wait 1ms
 
 	}
+	
+
+	
+	getchar();
 	return 0;
 }
